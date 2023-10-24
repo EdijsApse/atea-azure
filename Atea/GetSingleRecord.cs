@@ -2,37 +2,32 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Atea.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Azure.Data.Tables;
-using Azure.Storage.Blobs;
-using System;
 
 namespace Atea
 {
     public static class GetSingleRecord
     {
         [FunctionName("GetSingleRecord")]
-        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "record/{id}")] HttpRequest req, string id, ILogger log)
+        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "record/{id}")]HttpRequest req, string id)
         {
-            var tableServiceClient = new TableServiceClient(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-            var tableClient = tableServiceClient.GetTableClient(Environment.GetEnvironmentVariable("StorageName"));
-            var record = await tableClient.GetEntityIfExistsAsync<Record>(id, id);
+            var tableService = new TableService();
 
-            if (!record.HasValue)
+            var record = await tableService.GetSingleRecord(id);
+
+            if (record == null)
             {
                 return new NotFoundObjectResult(new {
                     message = "Record Not Found!"
                 });
             }
 
-            var blobServiceClient = new BlobServiceClient(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-            BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(Environment.GetEnvironmentVariable("StorageName"));
+            var blobService = new BlobService();
 
-            var blob = containerClient.GetBlobClient($"{record.Value.BlobContainersID}");
-            var blobContent = await blob.DownloadContentAsync();
+            var content = blobService.GetFileContent(record.BlobContainersID);
 
-            return new OkObjectResult(blobContent.Value.Content.ToString());
+            return new OkObjectResult(content.Result);
         }
     }
 }
