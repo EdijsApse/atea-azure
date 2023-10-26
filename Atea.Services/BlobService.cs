@@ -1,14 +1,23 @@
-﻿using Atea.Core.Services;
+﻿using Atea.Core.Configuration;
+using Atea.Core.Services;
 using Azure.Storage.Blobs;
-using System.IO;
 
 namespace Atea.Services
 {
     public class BlobService : IBlobService
     {
+        private readonly BlobContainerClient _containerClient;
+
+        public BlobService(IStorageConfiguration storageConfiguration)
+        {
+            _containerClient = new BlobContainerClient(storageConfiguration.ConnectionString, storageConfiguration.StorageName);
+
+            _containerClient.CreateIfNotExists();
+        }
+
         public async Task<string> GetFileContent(string blobName)
         {
-            var client = GetBlobClient(blobName).Result;
+            var client = GetBlobClient(blobName);
 
             var content = await client.DownloadContentAsync();
 
@@ -19,39 +28,31 @@ namespace Atea.Services
         {
             var blobName = Guid.NewGuid().ToString();
 
-            var client = GetBlobClient(blobName).Result;
+            var client = GetBlobClient(blobName);
 
-            using (var memoryStream = new MemoryStream())
-            using (var streamWriter = new StreamWriter(memoryStream))
-            {
-                await streamWriter.WriteAsync(payload);
-                await streamWriter.FlushAsync();
+            var stream = await WritePayloadToStream(payload);
 
-                memoryStream.Position = 0;
-
-                await client.UploadAsync(memoryStream);
-            }
+            await client.UploadAsync(stream);
 
             return blobName;
         }
 
-        private async Task<BlobContainerClient> GetContainerClient()
+        private async Task<MemoryStream> WritePayloadToStream(string payload)
         {
-            var containerClient = new BlobContainerClient(Environment.GetEnvironmentVariable("AzureWebJobsStorage"), Environment.GetEnvironmentVariable("StorageName"));
+            var memoryStream = new MemoryStream();
 
-            if (!containerClient.Exists())
-            {
-                await containerClient.CreateIfNotExistsAsync();
-            }
+            var streamWriter = new StreamWriter(memoryStream);
+            await streamWriter.WriteAsync(payload);
+            await streamWriter.FlushAsync();
 
-            return containerClient;
+            memoryStream.Position = 0;
+
+            return memoryStream;
         }
 
-        private async Task<BlobClient> GetBlobClient(string blobName)
+        private BlobClient GetBlobClient(string blobName)
         {
-            var conatiner = await GetContainerClient();
-
-            var client = conatiner.GetBlobClient(blobName);
+            var client = _containerClient.GetBlobClient(blobName);
 
             return client;
         }

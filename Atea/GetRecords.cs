@@ -4,36 +4,42 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using System;
-using Atea.Services;
 using Atea.Core.Validators;
+using Atea.Core.Services;
 
 namespace Atea
 {
-    public static class GetRecords
+    public class GetRecords
     {
+        private readonly IDateValidator _dateValidator;
+
+        private readonly ITableService _tableService;
+
+        public GetRecords(IDateValidator dateValidator, ITableService tableService)
+        {
+            _dateValidator = dateValidator;
+            _tableService = tableService;
+        }
+
         [FunctionName("GetRecords")]
-        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "records")] HttpRequest req)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "records")] HttpRequest req)
         {
             var dateFromString = req.Query["date-from"];
             var dateToString = req.Query["date-to"];
 
-            var dateValidator = new DateValidator(dateFromString, dateToString);
-
-            if (!dateValidator.IsValid())
+            if (!_dateValidator.IsValid(dateFromString, dateToString))
             {
                 return new OkObjectResult(new
                 {
                     success = false,
-                    message = dateValidator.ErrorMessage
+                    message = _dateValidator.ErrorMessage
                 });
             }
 
             var dateFrom = DateTime.Parse(dateFromString);
             var dateTo = DateTime.Parse(dateToString);
 
-            var tableService = new TableService();
-
-            var records = await tableService.GetFilteredRecords(dateFrom, dateTo);
+            var records = _tableService.GetFilteredRecords(dateFrom, dateTo);
 
             return new OkObjectResult(new {
                 data = records

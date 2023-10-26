@@ -1,41 +1,30 @@
 ﻿namespace Atea.Core.Validators
 {
-    public class DateValidator
+    public class DateValidator : IDateValidator
     {
-        private string _from;
+        public string ErrorMessage { get; private set; }
 
-        private string _to;
-
-        public string ErrorMessage;
-
-        public DateValidator(string from, string to)
+        public bool IsValid(string from, string to)
         {
-            _from = from;
-            _to = to;
-            ErrorMessage = string.Empty;
-        }
-
-        public bool IsValid()
-        {
-            if (IsEmpty())
+            if (IsEmpty(from, to))
             {
                 ErrorMessage = "Date From and Date To is required!";
                 return false;
             }
 
-            if (!IsValidDateTime(_from))
+            if (!IsValidDateTime(from))
             {
                 ErrorMessage = "Date From is not a valid date!";
                 return false;
             }
 
-            if (!IsValidDateTime(_to))
+            if (!IsValidDateTime(to))
             {
                 ErrorMessage = "Date To is not a valid date!";
                 return false;
             }
 
-            if (!IsValidInterval())
+            if (!IsValidInterval(from, to))
             {
                 ErrorMessage = "Date interval is not valid!";
                 return false;
@@ -44,9 +33,9 @@
             return true;
         }
 
-        private bool IsEmpty()
+        private bool IsEmpty(string from, string to)
         {
-            return string.IsNullOrEmpty(_from) || string.IsNullOrEmpty(_to);
+            return string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to);
         }
 
         private bool IsValidDateTime(string value)
@@ -58,12 +47,12 @@
             return date != default;
         }
 
-        private bool IsValidInterval()
+        private bool IsValidInterval(string from, string to)
         {
-            DateTime.TryParse(_from, out var from);
-            DateTime.TryParse(_to, out var to);
+            DateTime.TryParse(from, out var fromDateTime);
+            DateTime.TryParse(to, out var toDateTime);
 
-            return from < to;
+            return fromDateTime < toDateTime;
         }
     }
 }

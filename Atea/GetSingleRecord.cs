@@ -2,19 +2,28 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Atea.Services;
 using Microsoft.AspNetCore.Http;
+using Atea.Core.Services;
 
 namespace Atea
 {
-    public static class GetSingleRecord
+    public class GetSingleRecord
     {
-        [FunctionName("GetSingleRecord")]
-        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "record/{id}")]HttpRequest req, string id)
-        {
-            var tableService = new TableService();
 
-            var record = await tableService.GetSingleRecord(id);
+        private readonly ITableService _tableService;
+
+        private readonly IBlobService _blobService;
+
+        public GetSingleRecord(IBlobService blobService, ITableService tableService)
+        {
+            _tableService = tableService;
+            _blobService = blobService;
+        }
+
+        [FunctionName("GetSingleRecord")]
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "record/{id}")]HttpRequest req, string id)
+        {
+            var record = await _tableService.GetSingleRecord(id);
 
             if (record == null)
             {
@@ -23,9 +32,7 @@ namespace Atea
                 });
             }
 
-            var blobService = new BlobService();
-
-            var content = blobService.GetFileContent(record.BlobContainersID);
+            var content = _blobService.GetFileContent(record.BlobContainersID);
 
             return new OkObjectResult(content.Result);
         }

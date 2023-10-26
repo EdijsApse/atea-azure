@@ -2,6 +2,6 @@
 {
     public interface IHTTPService
     {
-        Task<HttpResponseMessage> GetData(string url);
+        Task<HttpResponseMessage> GetData();
     }
 }
